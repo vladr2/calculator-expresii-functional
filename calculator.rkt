@@ -6,7 +6,6 @@
 (struct unop (op e) #:transparent)
 
 ;; --- 2. Parsare ---
-;; Primește o listă (S-expression) și construiește AST-ul
 (define (parseaza expr)
   (match expr
     [(? number? n) (num n)]
@@ -29,7 +28,8 @@
      (let ([v2 (eval-expresie e2)])
        (if (= v2 0)
            (error "Eroare: Împărțire la zero!")
-           (/ (eval-expresie e1) v2)))]
+           ;; Fortam zecimale inmultind cu 1.0
+           (/ (* 1.0 (eval-expresie e1)) v2)))]
     [(unop 'sqrt e) 
      (let ([v (eval-expresie e)])
        (if (< v 0)
@@ -46,14 +46,20 @@
     [(unop 'sqrt e) (string-append "sqrt(" (afiseaza-expresie e) ")")]
     [(unop 'neg e) (string-append "(-" (afiseaza-expresie e) ")")]))
 
-;; --- 5. REPL Simplu ---
+;; --- 5. REPL Imbunatatit ---
 (define (repl)
-  (display "> ")
-  (let ([input (read)])
-    (unless (eq? input 'exit)
+  (display "Calculator> ")
+  (let ([input-str (read-line)])
+    (unless (or (eof-object? input-str) (string-ci=? (string-trim input-str) "exit"))
       (with-handlers ([exn:fail? (lambda (exn) (displayln (exn-message exn)))])
-        (let* ([ast (parseaza input)]
-               [rezultat (eval-expresie ast)]
-               [infix (afiseaza-expresie ast)])
-          (printf "Infix: ~a\nRezultat: ~a\n" infix rezultat)))
+        (let* ([port (open-input-string input-str)]
+               [input (read port)]) 
+          (if (eof-object? input)
+              (displayln "Eroare: Nu ai introdus nicio expresie.")
+              (let* ([ast (parseaza input)]
+                     [rezultat (eval-expresie ast)]
+                     [infix (afiseaza-expresie ast)])
+                (printf "Infix: ~a\nRezultat: ~a\n" infix rezultat)))))
       (repl))))
+
+(repl)
